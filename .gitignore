@@ -216,3 +216,27 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# Environment
+.env
+.env.local
+*.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Data
+data/esco/*.csv
+data/esco/*.zip
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+celerybeat-schedule
