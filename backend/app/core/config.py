@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     # Runtime environment
     environment: str = "development"
+    allowed_origins: str = "*"
 
     model_config = {"env_file": str(_ENV_FILE)}
 

@@ -9,12 +9,14 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status, Depends
 
 from app.models.application import EligibilityCheckResult
 from app.services.eligibility import check_eligibility
 from app.services.resume_upload import upload_resume
 from app.services.supabase import supabase_admin
+from app.core.security import get_current_user
+from app.core.dependencies import require_recruiter
 
 router = APIRouter()
 
@@ -223,6 +225,103 @@ async def submit_application(
 
     except HTTPException:
         # Re-raise FastAPI HTTP errors without wrapping them
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        )
+
+# ---------------------------------------------------------------------------
+# GET /me
+# ---------------------------------------------------------------------------
+
+@router.get("/me")
+@router.get("/my")  # Alias to match exact user request
+async def get_my_applications(current_user: dict = Depends(get_current_user)):
+    """
+    Fetch all applications for the currently authenticated user.
+    """
+    try:
+        user_id = current_user.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user token")
+
+        # Fetch profile to get email
+        profile_resp = (
+            supabase_admin.table("profiles")
+            .select("email")
+            .eq("id", user_id)
+            .single()
+            .execute()
+        )
+        
+        if not profile_resp.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User profile not found")
+            
+        current_user_email = profile_resp.data["email"]
+
+        # Fetch applications (ordering by created_at which is standard, fallback to applied_at if requested)
+        # We use created_at to match frontend expectations, but sort logic remains the same
+        apps_resp = (
+            supabase_admin.table("applications")
+            .select("*, jobs(title, description, department)")
+            .eq("email", current_user_email)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        
+        return apps_resp.data
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        )
+
+# ---------------------------------------------------------------------------
+# GET /{application_id}/resume-url
+# ---------------------------------------------------------------------------
+
+@router.get("/{application_id}/resume-url")
+async def get_resume_url(
+    application_id: str,
+    current_user: dict = Depends(require_recruiter)
+):
+    """
+    Recruiter-only endpoint – generate a signed URL to download/view the resume.
+    """
+    try:
+        app_resp = (
+            supabase_admin.table("applications")
+            .select("resume_path, job_id")
+            .eq("id", application_id)
+            .single()
+            .execute()
+        )
+        
+        if not app_resp.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+            
+        application = app_resp.data
+        if not application.get("resume_path"):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found for this application")
+            
+        # Optional: check if the recruiter owns the job.
+        job_resp = supabase_admin.table("jobs").select("recruiter_id").eq("id", application["job_id"]).single().execute()
+        if job_resp.data and job_resp.data["recruiter_id"] != current_user["sub"]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own the job for this application")
+
+        response = supabase_admin.storage.from_("resumes").create_signed_url(
+            path=application["resume_path"],
+            expires_in=300  # 5 minutes
+        )
+        
+        return { "url": response.get("signedURL") or response.get("signedUrl") }
+
+    except HTTPException:
         raise
     except Exception as exc:
         raise HTTPException(

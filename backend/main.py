@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import auth, jobs, applications, shortlist, websocket
 
+from app.core.config import settings
+
 app = FastAPI(
     title="Graph RAG ATS API",
     version="1.0.0",
@@ -13,7 +15,7 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.allowed_origins.split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
