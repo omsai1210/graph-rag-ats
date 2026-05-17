@@ -1,4 +1,4 @@
-export const api_base = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+export const api_base = import.meta.env.VITE_API_BASE || "https://graph-rag-ats.up.railway.app";
 
 export async function apiCall(method, endpoint, body = null, isFormData = false) {
     const auth_token = localStorage.getItem("auth_token") || "";
