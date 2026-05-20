@@ -27,7 +27,7 @@ _MAX_RESUME_BYTES = 5 * 1024 * 1024  # 5 MB
 # POST /
 # ---------------------------------------------------------------------------
 
-@router.post("/", response_model=EligibilityCheckResult, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=EligibilityCheckResult, status_code=status.HTTP_201_CREATED)
 async def submit_application(
     full_name: str = Form(...),
     email: str = Form(...),

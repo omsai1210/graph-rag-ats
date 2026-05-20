@@ -14,7 +14,7 @@ class ShortlistRequest(BaseModel):
     job_id: str
     shortlist_count: int
 
-@router.post("/")
+@router.post("")
 async def start_shortlisting(request: ShortlistRequest, current_user: dict = Depends(require_recruiter)):
     # 1. Verify recruiter owns the job
     job = supabase_admin.table("jobs").select("*").eq("id", request.job_id).single().execute().data

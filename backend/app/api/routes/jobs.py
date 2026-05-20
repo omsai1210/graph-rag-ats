@@ -71,7 +71,7 @@ def _get_owned_job(job_id: str, user: dict) -> dict:
 # GET /
 # ---------------------------------------------------------------------------
 
-@router.get("/", response_model=list)
+@router.get("", response_model=list)
 async def list_jobs(
     search: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
@@ -101,7 +101,7 @@ async def list_jobs(
 # POST /
 # ---------------------------------------------------------------------------
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def create_job(
     body: JobCreateRequest,
     current_user: dict = Depends(require_recruiter),
